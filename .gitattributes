@@ -1,0 +1,7 @@
+# Normalise line endings: store LF in the repo, check out the platform's native
+# ending. Without this, Windows contributors produce diffs that touch every line
+# of a file they only changed one line in.
+* text=auto
+
+# VBA modules are imported into Excel on Windows, which expects CRLF.
+*.bas text eol=crlf

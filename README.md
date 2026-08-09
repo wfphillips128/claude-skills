@@ -1,0 +1,53 @@
+# Claude Code skills
+
+A small set of [Claude Code](https://claude.com/claude-code) skills, mostly for
+finance and accounting work in Excel. They are used daily on real workbooks
+rather than written as demos.
+
+| Skill | What it does |
+|---|---|
+| [`convert-to-5g`](skills/convert-to-5g/) | Convert an existing Excel formula (or block of grid formulas) into a 5th-Generation (5G) dynamic-array LAMBDA function following Craig Hatmaker's Beyond Excel standards — self-documenting, spilling, w |
+| [`compose-5g-lambda`](skills/compose-5g-lambda/) | Build a NEW 5G Excel LAMBDA by composing or extending LAMBDAs that already exist in a workbook — the case where a working function needs a variant and naive edits break the recursion. |
+| [`excel-macro-optimizer`](skills/excel-macro-optimizer/) | Optimize, refactor, or write Excel VBA macros for speed, reliability, and maintainability — especially macros that live in an .XLAM add-in and run against the active workbook. |
+| [`copyconvo`](skills/copyconvo/) | >- Convert a Claude Code conversation transcript (.jsonl) into a clean, self-contained HTML file that anyone can read in a browser on any machine — no Claude Code or setup required. |
+| [`ss`](skills/ss/) | Read the user's most recent screenshot(s) and act on them. |
+
+## Installing
+
+Copy any skill folder into your global skills directory and restart Claude Code:
+
+| OS | Destination |
+|---|---|
+| Windows | `%USERPROFILE%\.claude\skills\` |
+| macOS / Linux | `~/.claude/skills/` |
+
+To install just one:
+
+```bash
+git clone https://github.com/wfphillips128/claude-skills.git
+cp -r claude-skills/skills/convert-to-5g ~/.claude/skills/
+```
+
+Or drop a skill into a single project's `.claude/skills/` instead, if you'd
+rather not have it load everywhere.
+
+## Notes
+
+- **Python.** Skills that shell out call plain `python`. On Windows, a bare
+  `python` sometimes resolves to the Microsoft Store stub, which does nothing
+  and exits; if that happens, use the full path to your real interpreter.
+- **`compose-5g-lambda` depends on `convert-to-5g`** — it reads the templates
+  and checklist from that skill instead of duplicating them. Install both.
+- **`ss` reads a screenshot folder.** It defaults to ShareX's and Windows'
+  standard locations; set `SCREENSHOT_DIR` to point it anywhere else.
+
+## The 5G skills
+
+`convert-to-5g` and `compose-5g-lambda` follow Craig Hatmaker's
+[Beyond Excel](https://sites.google.com/site/beyondexcel/) 5th-Generation
+methodology — self-documenting, spilling LAMBDA functions with inline help.
+The methodology is his; these skills are just an implementation of it.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).
