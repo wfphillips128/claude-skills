@@ -102,10 +102,10 @@ Three blocks, same contract as `convert-to-5g`:
 1. **AFE / Excel Labs form** — indented, commented
 2. **Single-line form** — comments stripped (`//` is illegal in an Excel formula).
    Optional parameters are `[Arg]`, never `[[Arg]]`. Say how to install it: Name
-   Manager only if the function is short and non-recursive — its *Refers to* box will
-   not accept long text, and a name cannot reference itself before it exists, so a
-   recursive function can never go in that way. Otherwise AFE or programmatic
-   installation. Verify by evaluating in a cell, not by checking Name Manager's display
+   Manager only if the function is short — its *Refers to* box will not accept long
+   text, whatever the formula says. Otherwise AFE or programmatic installation.
+   Recursion is not a constraint either way. Verify by evaluating in a cell, not by
+   checking Name Manager's display
 3. **Paste plan** — the exact cell, the call with real arguments and `#` spill anchors,
    the cells the output must equal, the tolerance
 

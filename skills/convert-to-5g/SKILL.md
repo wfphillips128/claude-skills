@@ -106,12 +106,15 @@ bracket fails to parse on the first argument. The `[` and `]` counts must each e
 the parameter count exactly.
 
 > **Name Manager cannot install a long function, and this is not a formula problem.**
-> Its *Refers to* box has its own input limit: past roughly a thousand characters the
-> text will not paste in at all. Excel never parses it, so no amount of shortening
-> prose, stripping the help table or fixing syntax makes any difference. A ~130-char
-> LAMBDA carrying every 5G feature pastes cleanly; a 5,400-char one will not enter the
-> box. Name Manager also cannot create a **recursive** function at all, because a name
-> cannot reference itself before it exists.
+> Its *Refers to* box has its own input limit — past some threshold the text will not
+> paste in at all. Excel never parses it, so no amount of shortening prose, stripping
+> the help table or fixing syntax makes any difference. Measured in Excel 365: a
+> ~130-char LAMBDA carrying every 5G feature pastes cleanly, and a 2,800-char one will
+> not enter the box. The exact cut-off between those two was not measured.
+>
+> Size is the only limit here. **Recursion is fine** — a self-referencing name can be
+> created in one step, no placeholder needed (verified in Excel 365). The older
+> "define it as `=0` first, then edit it" recipe is not required.
 >
 > So do not present form ② as "paste this into Name Manager" unless it is genuinely
 > short. State the install route instead — see `reference/claude-for-excel.md`.

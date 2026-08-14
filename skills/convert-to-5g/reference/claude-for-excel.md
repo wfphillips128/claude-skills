@@ -39,11 +39,11 @@ Stay here when the work is *reasoning or proof*:
 
 Give the user these verbatim, filled in.
 
-**To add the function.** Pick the route by size and by whether it recurses. Name
-Manager only works for a short, non-recursive function — its *Refers to* box refuses
-long text outright, and a name cannot reference itself before it exists.
+**To add the function.** Pick the route by size alone. Name Manager's *Refers to* box
+refuses long text outright — a ~130-char LAMBDA goes in, a 2,800-char one does not.
+Recursion is not a constraint: a self-referencing name can be created in one step.
 
-*Short (under ~1,000 chars) and not recursive:*
+*Short:*
 
 > Add a workbook-scoped defined name called `<FullName>` whose formula is the LAMBDA
 > below. Paste it exactly — do not reformat, do not add line breaks, do not add
@@ -53,13 +53,13 @@ long text outright, and a name cannot reference itself before it exists.
 > <the single-line form>
 > ```
 
-*Long or recursive — use Excel Labs' Advanced Formula Environment:*
+*Long — use Excel Labs' Advanced Formula Environment:*
 
 > Install the free [Excel Labs](https://www.microsoft.com/en-us/garage/profiles/excel-labs/)
 > add-in, open the Advanced Formula Environment, and paste the commented form ① into
 > the Modules pane. AFE strips the comments on import, so they cost nothing.
 
-*Or install it programmatically, which also works for recursive functions:*
+*Or install it programmatically:*
 
 ```python
 # COM / VBA object model — wants USER syntax: [Arg] brackets, no _xlfn. prefixes

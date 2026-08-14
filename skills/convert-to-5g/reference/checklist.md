@@ -58,9 +58,9 @@ with a caveat.
 - [ ] Single-line form is a single line
 - [ ] Optional parameters written `[Arg]`, never `[[Arg]]`; `[` and `]` counts each
       equal the parameter count
-- [ ] **Install route matches the function**: Name Manager only if short and
-      non-recursive, otherwise AFE or programmatic. Never tell the user to paste a
-      long function into the *Refers to* box — it will not go in
+- [ ] **Install route matches the size**: Name Manager only if short, otherwise AFE or
+      programmatic. Never tell the user to paste a long function into the *Refers to*
+      box — it will not go in. Recursion is not a factor
 - [ ] Verification is "evaluate it in a cell", not "check Name Manager shows it"
 - [ ] Test plan names a specific target cell, a specific comparison range, and a
       tolerance
