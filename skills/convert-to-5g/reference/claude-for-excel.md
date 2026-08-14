@@ -39,15 +39,39 @@ Stay here when the work is *reasoning or proof*:
 
 Give the user these verbatim, filled in.
 
-**To add the function:**
+**To add the function.** Pick the route by size and by whether it recurses. Name
+Manager only works for a short, non-recursive function — its *Refers to* box refuses
+long text outright, and a name cannot reference itself before it exists.
+
+*Short (under ~1,000 chars) and not recursive:*
 
 > Add a workbook-scoped defined name called `<FullName>` whose formula is the LAMBDA
 > below. Paste it exactly — do not reformat, do not add line breaks, do not add
-> comments. Then confirm it appears in Name Manager without an error.
+> comments. Then confirm the function evaluates in a cell.
 >
 > ```
-> <the single-line Name Manager form>
+> <the single-line form>
 > ```
+
+*Long or recursive — use Excel Labs' Advanced Formula Environment:*
+
+> Install the free [Excel Labs](https://www.microsoft.com/en-us/garage/profiles/excel-labs/)
+> add-in, open the Advanced Formula Environment, and paste the commented form ① into
+> the Modules pane. AFE strips the comments on import, so they cost nothing.
+
+*Or install it programmatically, which also works for recursive functions:*
+
+```python
+# COM / VBA object model — wants USER syntax: [Arg] brackets, no _xlfn. prefixes
+wb.Names.Add(Name="fx.Exampleλ", RefersTo="=" + single_line_form)
+
+# openpyxl — the opposite: wants the STORED form, prefixes intact
+wb.defined_names[name] = DefinedName(name, attr_text=stored_form)
+```
+
+Verify by **evaluating the function in a cell**, never by checking that Name Manager
+displays it. Name Manager draws an all-optional LAMBDA without its `LAMBDA(` head or
+its commas — a display bug that looks exactly like a corrupted definition.
 
 **To test it:**
 

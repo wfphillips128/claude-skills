@@ -53,9 +53,15 @@ with a caveat.
 
 ## Delivery
 
-- [ ] **Three blocks emitted**: AFE form, Name Manager form, test plan
-- [ ] Name Manager form contains **zero** `//` and zero `/* */` comments
-- [ ] Name Manager form is a single line
+- [ ] **Three blocks emitted**: AFE form, single-line form, test plan
+- [ ] Single-line form contains **zero** `//` and zero `/* */` comments
+- [ ] Single-line form is a single line
+- [ ] Optional parameters written `[Arg]`, never `[[Arg]]`; `[` and `]` counts each
+      equal the parameter count
+- [ ] **Install route matches the function**: Name Manager only if short and
+      non-recursive, otherwise AFE or programmatic. Never tell the user to paste a
+      long function into the *Refers to* box — it will not go in
+- [ ] Verification is "evaluate it in a cell", not "check Name Manager shows it"
 - [ ] Test plan names a specific target cell, a specific comparison range, and a
       tolerance
 - [ ] The user's workbook was not modified

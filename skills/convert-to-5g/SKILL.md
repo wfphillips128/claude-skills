@@ -96,10 +96,25 @@ Every conversion returns these three blocks, in this order.
 **① AFE / Excel Labs form** — indented, `/* */` header, `//` comments. This is the
 readable, maintainable source and the one the user should keep.
 
-**② Name Manager form** — the identical formula flattened to a single line with all
-comments stripped. Excel's Name Manager rejects `//` comments and collapses
-formatting; pasting form ① into it produces a broken or unreadable name. Always
-supply both. Verify form ② contains no `//` and no `/*`.
+**② Single-line form** — the identical formula flattened to one line with all comments
+stripped. `//` comments are illegal in an Excel formula, so form ① can never be
+installed as-is. Always supply both. Verify form ② contains no `//` and no `/*`.
+
+Optional parameters are written `[Arg]` here — **one** bracket pair, never `[[Arg]]`.
+Excel reads a leading `[` as the start of a structured table reference, so a doubled
+bracket fails to parse on the first argument. The `[` and `]` counts must each equal
+the parameter count exactly.
+
+> **Name Manager cannot install a long function, and this is not a formula problem.**
+> Its *Refers to* box has its own input limit: past roughly a thousand characters the
+> text will not paste in at all. Excel never parses it, so no amount of shortening
+> prose, stripping the help table or fixing syntax makes any difference. A ~130-char
+> LAMBDA carrying every 5G feature pastes cleanly; a 5,400-char one will not enter the
+> box. Name Manager also cannot create a **recursive** function at all, because a name
+> cannot reference itself before it exists.
+>
+> So do not present form ② as "paste this into Name Manager" unless it is genuinely
+> short. State the install route instead — see `reference/claude-for-excel.md`.
 
 **③ Test plan** — concrete, not generic:
 - The exact cell to paste the call into (pick empty space below/right of the original).
