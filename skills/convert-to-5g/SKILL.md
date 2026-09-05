@@ -150,6 +150,13 @@ built 5G function shows `_xlop.` on all of its parameters.
   signalled in the **help text**, not the definition. (Rationale: an argument Excel
   thinks is required blocks the function from running at all, so the help text never
   displays.)
+- **The function must be self-contained.** No cell references, no named ranges, no
+  table references, no VBA — everything it needs arrives through its arguments.
+  The one exception is calling another 5g function in the same module. A function
+  that reads `tblInputs` works in exactly one workbook, which defeats the point.
+- **The last LET step is a bare name, not an expression** — `Output, CHOOSE(...)`
+  then `Output`. That is what lets a maintainer swap in another step name to see
+  its value.
 - If the converted function errors, say so and show the error. Do not iterate silently.
 
 ## References
@@ -157,8 +164,23 @@ built 5G function shows `_xlop.` on all of its parameters.
 - `reference/5g-template-full.md` — the full 5G structure, transcribed from working code
 - `reference/5g-template-inline-help.md` — the lightweight template
 - `reference/conversion-rules.md` — naming, array idioms, help-text mechanics
+- `reference/hatmaker-library.md` — the ~120 functions Hatmaker already publishes,
+  their import URLs, and where the published conventions differ from ours.
+  **Check it before writing a new function**: much of what a conversion needs
+  already exists and is importable in one step.
+- `reference/5g-standard.md` — **the published 13-point 5g Standard**, the
+  self-containment rule, and where our templates diverge from it. Read this when
+  a judgement call is not covered by the templates.
+- `reference/testing.md` — the six test classes and the randomised differential
+  test. What Standard 13 actually asks for.
 - `reference/checklist.md` — run before reporting done
 - `reference/claude-for-excel.md` — when to hand off to a tool that's inside Excel
+
+Hatmaker's five source-structure templates, verbatim from the gist that backs
+them, are in `compose-5g-lambda/reference/hatmaker-templates.md`. **REDUCE and
+STACK is the one that maps onto a grid conversion** — it calculates one column
+at a time and can reach back to prior columns, exactly like the formulas being
+replaced.
 
 For building a **new** function out of existing 5G functions rather than converting a
 grid formula, use the `compose-5g-lambda` skill instead.

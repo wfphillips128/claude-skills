@@ -2,8 +2,14 @@
 
 This is the template to use for anything reusable. It is **transcribed from working
 code** — `fx.DebtSculptIssuanceλ` and `fx.InterestDebtIssuanceλ` as stored in
-a real Beyond Excel workbook — not from documentation. (The beyondexcel Google Site
-renders via JavaScript and cannot be fetched; working source is the authority.)
+a real Beyond Excel workbook — not from documentation. Working source remains the
+authority here.
+
+(The beyondexcel Google Site renders via JavaScript, so plain fetching returns an
+empty shell. It *can* now be read with the `webscrape` skill, which drives a real
+browser. What it publishes is catalogued in `hatmaker-library.md` — including a
+lighter comment-header template used for library functions, which is a different
+shape from this one rather than a contradiction of it.)
 
 ## Shape
 
@@ -19,10 +25,17 @@ LAMBDA( [args...],
     <calculations>,
     Result,    <the answer>,
     Return,    IF(AND(Errors), 2, IF(OR(Errors), 3, IF(OR(ISERROR(Result)), 2, 1))),
-    CHOOSE( Return, Result, Help, Messages )
+    Output,    CHOOSE( Return, Result, Help, Messages ),
+    Output
   )
 )
 ```
+
+**The last LET step is a bare name, not a formula.** That is Standard 10, and
+the payoff is debugging: a maintainer swaps `Output` for `Errors` or `Result`
+and sees that step's value in the grid without restructuring anything. It costs
+one extra stored name — drop it only if the function is up against the 8,192
+stored-character limit, and say so when you do.
 
 The final `CHOOSE` is the whole trick:
 
@@ -53,10 +66,17 @@ Library.Nameλ = LAMBDA(
 
     LET(
         // ---- 1. Help table -------------------------------------------------
-        // Column delimiter is → (U+2192). Row delimiter is ¶ (U+00B6).
-        // Every line ends with & except the last.
+        // Column delimiter is → (U+2192, ALT-26). Row delimiter is ¶ (U+00B6,
+        // ALT-0182). Every line ends with & except the last.
+        //
+        // Section order is the published standard's: FUNCTION, DESCRIPTION,
+        // WEBPAGE, VERSION, PARAMETERS, EXAMPLE. The FUNCTION line is how the
+        // user learns which arguments are required — the signature can't tell
+        // them, because it brackets everything. Omit WEBPAGE if there is no page.
         Help, TRIM(TEXTSPLIT(
+            "FUNCTION:          →Library.Nameλ(Arg1, Arg2, [OptArg])¶" &
             "DESCRIPTION:       →What the function does¶" &
+            "WEBPAGE:           →https://example.com/library-name¶" &
             "SUGGESTED ROW IDS: →First output row¶" &
             "                   →Second output row¶" &
             "VERSION:           →UserName, Mmm dd, yyyy¶" &
@@ -98,10 +118,34 @@ Library.Nameλ = LAMBDA(
 
         // ---- 6. Dispatch ---------------------------------------------------
         Return, IF(AND(Errors), 2, IF(OR(Errors), 3, IF(OR(ISERROR(Result)), 2, 1))),
-        CHOOSE(Return, Result, Help, Messages)
+        Output, CHOOSE(Return, Result, Help, Messages),
+        Output
     )
 );
 ```
+
+## A lighter dispatch, when the validation block is overkill
+
+Hatmaker's own templates use a simpler two-way dispatch: a boolean naming
+whether help is wanted, and an `IF` at the end.
+
+```excel
+    Help,    TRIM(TEXTSPLIT("FUNCTION: →...", "→", "¶")),
+    // Only the genuinely REQUIRED arguments go in this test.
+    Help?,   OR(ISOMITTED(Arg1), ISOMITTED(Arg2)),
+    ...
+    Result,  <the answer>,
+    Output,  IF(Help?, Help, Result),
+    Output
+```
+
+`CHOOSE(Help? + 1, Result, Help)` is the same thing written another way; both
+appear in his published templates.
+
+This is a genuine third tier, between `5g-template-inline-help.md` and the full
+block above: it gets the help table without the `ErrMsgs`/`Errors`/`Messages`
+machinery. Use it when arguments need no per-argument validation messages. Use
+the full block when a wrong argument deserves to be named.
 
 ## Notes that matter
 

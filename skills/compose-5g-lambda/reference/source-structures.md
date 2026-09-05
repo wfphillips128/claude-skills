@@ -2,13 +2,30 @@
 
 Five ways to build a schedule with a LAMBDA. Pick by what period *n* needs to know.
 
-| Structure | Use when | Cost |
+| Structure | Use when | Relative speed |
 |---|---|---|
-| **Corkscrew** | Classic open → movement → close balance roll-forward | Familiar, verbose |
-| **Reduce and Stack** | Each period depends on the previous; you build one array | `REDUCE` + `VSTACK`, O(n²) copying |
-| **Scan and Stack** | Same, but `SCAN` carries the accumulator natively | Cleaner than REDUCE for single-value carry |
-| **Thunk and Scan** | Each period carries *several* values forward | Thunks (`LAMBDA(x)`) wrap arrays as single values |
-| **Circularity** | A value depends on itself (interest ↔ principal) | Convergence recursion |
+| **Corkscrew** | Classic open → movement → close balance roll-forward | **Fastest** — ~400x Reduce-and-Stack |
+| **Reduce and Stack** | Each period depends on the previous; period *n* needs prior columns | **Slowest** — the baseline |
+| **Scan and Stack** | Same, but `SCAN` carries the accumulator natively | >= 2x Reduce-and-Stack |
+| **Thunk and Scan** | Each period carries *several* values forward | >= 10x Scan-and-Stack |
+| **Circularity** | A value depends on itself (interest ↔ principal) | Convergence, ~8 iterations typical |
+
+Those multipliers are Hatmaker's own, from the course pages. They matter more
+than they look: Reduce-and-Stack is the easiest to write and the one to reach
+for when *converting a grid*, but it is two orders of magnitude off the pace of
+a plain corkscrew. Write it first, and move only if it is actually slow.
+
+Two rules that come with the table:
+
+- **Do not use Scan-and-Stack or Thunk-and-Scan for a simple corkscrew.** They
+  earn their complexity only when you must select current-period values with
+  `INDEX`.
+- **Thunk-and-Scan only when performance is a demonstrated problem** — it is the
+  one structure a reviewer will not be able to read.
+
+For the templates themselves, verbatim as published, see
+`hatmaker-templates.md`. This file covers the two structures the `fx.*` library
+actually uses, plus thunks.
 
 The `fx.*` library uses a sixth, informal one: **recursive HSTACK**. It behaves
 like Scan-and-Stack but is written as direct self-recursion, which makes the
@@ -159,5 +176,140 @@ Result,   VSTACK(OpenBal, Payments, CloseBal),
 ```
 
 `SEQUENCE(1, Term)` — the 1-row form — keeps the output horizontal without a
-`TRANSPOSE`. To carry more than one value forward, wrap them in a thunk
-(`LAMBDA(VSTACK(a, b))`) and unwrap with `thunk()`; that's Thunk-and-Scan.
+`TRANSPOSE`.
+
+---
+
+## Thunks
+
+The answer to "period *n* needs to carry more than one value forward", and the
+way around Excel's *array of arrays* error.
+
+### The problem
+
+`SCAN` produces one row. That row is an array. Ask `SCAN` to output two rows and
+Excel sees two arrays inside one array, which it cannot represent — so it throws
+`#CALC!`, "array of arrays".
+
+### What a thunk is
+
+A function that holds an array. Excel treats a function as a single object, so
+an *array of thunks* is legal where an array of arrays is not.
+
+The canonical form, and the three-step progression that makes it click:
+
+```excel
+=LAMBDA(x, LAMBDA(x))          // #CALC! - "Cell formula result returns a function"
+=LAMBDA(x, LAMBDA(x))(10)      // #CALC! - this returns LAMBDA(10), still a function
+=LAMBDA(x, LAMBDA(x))(10)()    // 10
+```
+
+The first two error for the same reason `=SUM` errors in a cell: a cell displays
+values, not functions. The empty parentheses are what make the thunk give up its
+contents.
+
+Hatmaker's own comment on this is worth keeping, because it sets the right
+expectation:
+
+> Easy right? Nope. At least not to me. I understand how it works but not
+> completely why it works. I know people who do know why it works, but knowing
+> why isn't as important as knowing how.
+
+### Loading and unloading
+
+```excel
+    // 1. Declare the thunk. This does nothing yet - it just names a function.
+    Thunk,  LAMBDA(x, LAMBDA(x)),
+
+    // 2. Stack the rows, then wrap each COLUMN in its own thunk.
+    //    The result is an array of thunks, not an array of arrays.
+    Flows,  BYCOL(VSTACK(Gains, Losses), LAMBDA(col, Thunk(col))),
+
+    // 3. SCAN over the thunks. Each callback receives ONE thunk.
+    Close,  SCAN(Opening, Flows, LAMBDA(Acc, Flow,
+                LET(
+                    Pair, Flow(),                    // () unwraps it: a 2-row column
+                    Gain, INDEX(Pair, 1, 1),
+                    Loss, INDEX(Pair, 2, 1),
+                    Acc + Gain - Loss
+                ))),
+```
+
+**The naming convention is what makes thunk code readable**, and it is worth
+following exactly:
+
+| Name | What it is |
+|---|---|
+| `Flows` | the array of thunks (plural) |
+| `Flow` | one thunk (singular) |
+| `Flow()` | the array inside it |
+
+### Why it is faster
+
+Not because thunks are cheap, but because of what they replace:
+
+> instead of using INDEX to pull from a larger array, we will use INDEX to pull
+> from a much smaller array — a Thunk containing two values.
+
+Every period's `INDEX` runs against a 2-cell column instead of the whole
+timeline. That is where the >= 10x comes from.
+
+### When not to
+
+Only when performance is a demonstrated problem, and never for a simple
+corkscrew. A reviewer who cannot read the function cannot check it — and the
+course's answer to that ("they can test it, which is superior to inspection")
+only holds if the tests in `convert-to-5g/reference/testing.md` actually exist.
+
+---
+
+## Recursion without a public counter
+
+The `DoNotUse` / `Lo` / `Hi` / `Iter` pattern used throughout the `fx.*` library
+puts recursion state in the function's own signature. It works, and it is what
+the tested library does — but it has two costs:
+
+- those arguments show up in the user's tooltip, against Standard 02's "clear
+  and concise argument names"
+- every recursive call re-passes *every* argument, and in stored form each one
+  carries an `_xlpm.` prefix. On `fx.DebtSizeIssueλ` a single call site costs
+  185 stored characters against a hard 8,192 limit.
+
+Hatmaker's Circularity template avoids both by making the recursive function a
+**LET step that is passed to itself**:
+
+```excel
+    // The sub-function's FIRST argument is the function to call next.
+    Iterate, LAMBDA(fn, CashBeforeInt, BeginningDebt, InterestRate, AverageDebt,
+                 LET(
+                     Interest,    AverageDebt * InterestRate,
+                     CFADS,       CashBeforeInt - Interest,
+                     EndingDebt,  BeginningDebt - CFADS,
+                     AverageDebt, AVERAGE(BeginningDebt, EndingDebt),
+                     Delta,       ABS(Interest - (AverageDebt * InterestRate)),
+                     Result,      IF(Delta < 0.01,
+                                     Interest,
+                                     fn(fn, CashBeforeInt, BeginningDebt,
+                                        InterestRate, AverageDebt)),
+                     Result
+                 )),
+
+    // Seed it by handing it to itself.
+    Result,  Iterate(Iterate, CashBeforeInt, BeginningDebt, InterestRate, 0),
+```
+
+`fn(fn, ...)` is what keeps the reference alive down the chain. The public
+signature stays clean, and the recursion needs no workbook-level name — which is
+also what keeps it compliant with Standard 06, self-containment.
+
+**Seed the circular quantity at zero.** `AverageDebt` starts at 0, so `Interest`
+is 0 on the first pass and `Delta` is large. Each pass shrinks it; ~8 iterations
+is typical for this class of problem.
+
+**What the template does not give you:** no iteration cap and no divergence
+handling. It assumes the delta shrinks monotonically. Where that is not
+guaranteed, add a cap in its own argument slot as shown above — and note that
+some problems do not converge at all under fixed-point iteration.
+`fx.DebtSizeIssueλ` is the worked case: raising the balance raises interest,
+which cuts principal by more than the balance rose, so it bisects on total
+annual coupon instead. Verified divergent at 200 iterations before the switch.

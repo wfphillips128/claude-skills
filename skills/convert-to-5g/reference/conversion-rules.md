@@ -4,13 +4,72 @@ Craig Hatmaker's conventions, plus what the working library actually does.
 
 ## Naming
 
-- Function names end in **`λ`** (U+03BB, Greek small letter lambda).
+- Function names end in **`λ`** (U+03BB, Greek small letter lambda). It goes at
+  the *end*, and IntelliSense means nobody has to type it.
 - Library functions carry a dot namespace: `fx.DebtSculptIssuanceλ`,
   `fx.Timelineλ`. The prefix groups the library; the part after the dot is the
-  function.
+  function. Hatmaker's own templates use the same shape —
+  `=ID.FunctionNameλ( 123, 456)`, where *"ID is assumed to be the module's
+  name"*. Names need only be unique **within a module**.
 - `LET` step names are PascalCase and describe the *thing*, not the operation:
   `ClosingDebt`, `PeriodRate`, `NewColumn`. Name the last calculation `Result`.
 - Excel table names start with `tbl` plus a very short name.
+
+### Concise versus conveys-purpose
+
+These two goals fight, and the course is explicit that the job is to balance
+them rather than pick one. Its worked example is Excel's own `DB()` —
+depreciation, declining balance — which is concise and conveys nothing:
+
+| Candidate | Problem |
+|---|---|
+| `DB()` | Too concise. Conveys no purpose. |
+| `DEPRECIATIONDECLININGBALANCE()` | Conveys purpose, unreadable. |
+| `DepreciateDecliningBalance()` | Readable, still not concise. |
+| `DepnDecBal()` | Concise, but there is no standard abbreviation for either word. |
+| **`DepreciateDB()`** | **The answer.** "Depreciate" supplies the context that lets `DB` be read as declining balance. |
+
+So: camel case for readability, standard abbreviations where they exist, and
+**context to disambiguate an abbreviation** where they do not.
+
+### Argument names
+
+- Same rules, but users never type them, so conciseness matters less than
+  clarity.
+- **Be consistent across the library.** Decide once whether it is `Opening` or
+  `OpeningBalance`, and use that everywhere. Arguments recur across functions in
+  a way function names do not.
+- Avoid single letters unless the context makes them obvious — `MAKEARRAY`'s
+  `R` and `C` are fine; a lone `D` is not.
+
+### LET step and constant names
+
+- Concise and unique within the `LET`. **Use a mnemonic once a name would run
+  past about ten characters.**
+- Nested `LET`s can see outer step names.
+- Name your constants, and gloss the mnemonic on the same line. Data becomes
+  information:
+
+```excel
+    MPY,        12,                     //Months Per Year
+    Allocation, AnnualAmount / MPY,
+```
+
+  A bare `12` in a formula tells a maintainer nothing; `MPY` tells them what the
+  12 *is*.
+
+### The last LET step must be a name
+
+`LET` allows a formula as its final step. 5G does not:
+
+```excel
+    Return, IF(AND(Errors), 2, IF(OR(Errors), 3, 1)),
+    Output, CHOOSE(Return, Result, Help, Messages),
+    Output                                  // a name, not the expression
+```
+
+The reason is debugging — swap `Output` for any other step name and that step's
+value spills to the grid. See Standard 10 in `5g-standard.md`.
 
 ## Argument brackets — the rule people get wrong
 
@@ -34,13 +93,37 @@ You can verify this on any workbook: Excel stores optional LAMBDA parameters wit
 
 ## Help text mechanics
 
-- Delimiters are real Unicode: **`→`** (U+2192) between columns, **`¶`** (U+00B6)
-  between rows. Not `->`. Not `|`.
+- Delimiters are real Unicode: **`→`** (U+2192, ALT-26) between columns, **`¶`**
+  (U+00B6, ALT-0182) between rows. Not `->`. Not `|`. They were chosen because
+  they are unlikely to appear in help text — the default `TEXTSPLIT` delimiters
+  break on any description containing a comma. To type them: hold ALT and use
+  the numeric keypad, or Insert > Symbol into a cell and copy the result.
 - `TRIM(TEXTSPLIT(text, "→", "¶"))` — column delimiter first, row delimiter second.
 - Every concatenated line ends with `&` **except the last**. A missing `&` is the most
   common reason a 5G function won't parse.
 - Pad the label column with spaces so the source lines up; `TRIM` cleans it in the
-  output.
+  output. The padding exists purely to make the source resemble the rendered
+  table — format it to look like what the user will see.
+- **`TRIM` eats indentation you meant to keep.** Where a space has to survive —
+  indenting a continuation line under its parent, say — use U+2003 EM SPACE,
+  which `TRIM` does not remove. It shows in the source as an outlined block.
+
+### Section order
+
+The published standard's order, and what each line is for:
+
+| Line | Required? | Content |
+|---|---|---|
+| `FUNCTION:` | Yes | Name and syntax. **The only place the user learns which arguments are required** — bracket the optional ones here, since the signature brackets everything. |
+| `DESCRIPTION:` | Yes | One or two sentences. Copy from the documentation block. |
+| `WEBPAGE:` | Optional | URL for a page about this function. Omit the line if there is none. |
+| `VERSION:` | Yes | Author's initials and the date of the most recent change. |
+| `PARAMETERS:` | Yes | Each argument with `(Required)` or `(Optional)` and a description. |
+| `EXAMPLE:` / `EXAMPLES:` | Where practical | A real call. |
+
+`SUGGESTED ROW IDS:` is ours, not the standard's — it labels the rows a
+multi-row function returns and is worth keeping for anything that `VSTACK`s an
+output block.
 - A parameter description too long for one row continues on the next with a **leading
   `→`** so it lands in the correct column:
 

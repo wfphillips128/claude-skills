@@ -144,8 +144,38 @@ def load_benchmark(path):
     the printed total.
     """
     import csv
-    with open(path, newline="", encoding="utf-8") as fh:
-        return {int(r["period"]): float(r["value"].replace(",", ""))
+
+    def to_num(raw):
+        """Separator-safe: the rightmost of "." and "," is the decimal point.
+
+        Stripping commas outright would read a European "1.234,56" as 1.23456 -
+        a 1000x error in the very figure the tie-out trusts.
+        """
+        s = str(raw).strip()
+        for junk in ("$", "€", "£", " ", " ", "'"):
+            s = s.replace(junk, "")
+        neg = s.startswith("(") and s.endswith(")")
+        if neg:
+            s = s[1:-1]
+        last_c, last_d = s.rfind(","), s.rfind(".")
+        if last_c >= 0 and last_d >= 0:
+            dec = "," if last_c > last_d else "."
+        elif last_c >= 0:
+            dec = "." if (s.count(",") > 1 or len(s) - last_c - 1 == 3) else ","
+        elif last_d >= 0:
+            dec = "," if s.count(".") > 1 else "."
+        else:
+            dec = "."
+        s = s.replace("," if dec == "." else ".", "")
+        if dec != ".":
+            s = s.replace(dec, ".")
+        f = float(s)
+        return -f if neg else f
+
+    # utf-8-sig to match every other CSV reader in these skills: Excel's
+    # "CSV UTF-8" export writes a BOM, which would break the first header key.
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        return {int(r["period"]): to_num(r["value"])
                 for r in csv.DictReader(fh)}
 
 

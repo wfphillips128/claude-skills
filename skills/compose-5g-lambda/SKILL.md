@@ -40,6 +40,9 @@ State plainly, and get the user to confirm anything you inferred:
 - **Output rows** — the exact `VSTACK` order the function returns, and what each row is
 - **Termination** — how the recursion stops
 - **Errors** — which arguments get validated and the message for each
+- **Self-containment** — confirm every input arrives through an argument. No cell,
+  name or table references; the only outside call allowed is another 5g function
+  in the same module. See `convert-to-5g/reference/5g-standard.md`.
 
 If the new function differs from the existing one by a single concept (say, a debt
 reserve offset), name that concept and describe precisely where it enters the chain.
@@ -121,14 +124,27 @@ which periods fail — do not hand over a function described as working when it 
 The 5G structure, naming, help-text mechanics and bracket conventions live in the
 sibling skill and are not duplicated here:
 
+- `../convert-to-5g/reference/5g-standard.md`
 - `../convert-to-5g/reference/5g-template-full.md`
 - `../convert-to-5g/reference/conversion-rules.md`
 - `../convert-to-5g/reference/checklist.md`
+- `../convert-to-5g/reference/testing.md`
+- `../convert-to-5g/reference/hatmaker-library.md`
 
 Read the full template before writing the function; run the checklist before delivering.
 
+**Start with `hatmaker-library.md`.** Composing a new function is only worth doing
+once you know it does not already exist — about 120 5G functions are published and
+importable, and the catalogue also shows the naming families (`SumXλ` / `LabelXλ`,
+and the `A`/`R`/`C` array/row/column suffixes) that a new variant should follow to
+sit naturally beside them.
+
 ## References
 
+- `reference/hatmaker-templates.md` — **the five published templates verbatim.**
+  They exist on the Beyond Excel site only as screenshots; this is the code from
+  the gist that backs them, with the performance ranking, the selection rules,
+  and the bugs the published versions carry. Read it before choosing a structure.
 - `reference/source-structures.md` — the five 5G source structures, written out
 - `reference/pitfalls.md` — **read this first when debugging a broken variant**
 - `reference/shadow-model-guide.md` — faithful Python mirroring and tie-out presentation
