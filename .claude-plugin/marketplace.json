@@ -1,0 +1,19 @@
+{
+  "name": "wfphillips128-skills",
+  "owner": {
+    "name": "wfphillips128"
+  },
+  "description": "Claude Code skills for building Excel LAMBDAs, VBA and add-ins, plus everyday workflow helpers.",
+  "plugins": [
+    {
+      "name": "excel-dev",
+      "source": "./plugins/excel-dev",
+      "description": "Build new Excel LAMBDAs to the 5G standard, refactor and write VBA, and build .xlam add-ins (ribbon XML, .bas modules, verification)."
+    },
+    {
+      "name": "claude-workflow",
+      "source": "./plugins/claude-workflow",
+      "description": "Everyday Claude Code helpers: export a conversation to HTML, end-of-session housekeeping, read the latest screenshot, scrape web pages with Firecrawl."
+    }
+  ]
+}

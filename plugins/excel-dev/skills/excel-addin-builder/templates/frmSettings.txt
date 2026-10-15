@@ -1,0 +1,558 @@
+' ============================================================================
+'  frmSettings -- the add-in's settings dialog
+' ============================================================================
+'
+'  HOW TO INSTALL THIS  (about 30 seconds, no dragging of controls)
+'
+'    1. In the VBA editor, select the add-in's project in the Project
+'       Explorer (left pane).
+'    2. Insert > UserForm.  A blank form appears.
+'    3. In the Properties window (F4), set:
+'           (Name)  =  frmSettings
+'    4. Double-click the blank form to open its code window, delete anything
+'       already in it, and paste EVERYTHING in this file.
+'
+'  Do NOT place any controls yourself -- the form builds its own layout when
+'  it opens.
+'
+'  WHY IT WORKS THIS WAY, and not as a file you import:
+'    A VBA UserForm exports as a PAIR of files: a .frm holding the code, and a
+'    .frx holding the control layout as BINARY data. A hand-written .frm alone
+'    imports as an empty, broken form. Building the controls in code
+'    sidesteps that, and the whole layout stays readable text you can diff,
+'    back up and review. The cost: the controls are invisible in the VBA
+'    designer -- you only see them when the form runs.
+'
+'  NEEDS: AddInStorage (the data) and modAbout (the dialog title).
+' ============================================================================
+
+Option Explicit
+
+' ----------------------------------------------------------------------------
+'  Controls, created at run time in UserForm_Initialize.
+'
+'  WithEvents is what lets a control created in code still fire Click events.
+'  A control dragged on in the designer gets that wiring for free; one added
+'  with Controls.Add does not, unless it is assigned to a WithEvents variable.
+'  Controls we never react to (labels, text boxes) are declared plain.
+' ----------------------------------------------------------------------------
+Private mpgSettings   As MSForms.MultiPage
+Private lblKeyName    As MSForms.Label
+Private lblHint       As MSForms.Label
+Private txtValue      As MSForms.TextBox
+Private txtItem       As MSForms.TextBox
+
+Private WithEvents lstSettings As MSForms.ListBox
+Private WithEvents cmdUpdate   As MSForms.CommandButton
+Private WithEvents lstItems    As MSForms.ListBox
+Private WithEvents cmdAdd      As MSForms.CommandButton
+Private WithEvents cmdRename   As MSForms.CommandButton
+Private WithEvents cmdRemove   As MSForms.CommandButton
+Private WithEvents cmdUp       As MSForms.CommandButton
+Private WithEvents cmdDown     As MSForms.CommandButton
+Private WithEvents cmdSave     As MSForms.CommandButton
+Private WithEvents cmdCancel   As MSForms.CommandButton
+
+' ----------------------------------------------------------------------------
+'  Working copies. The form edits THESE, never the worksheet. Nothing touches
+'  the storage sheet until Save is clicked -- which is what makes Cancel
+'  actually cancel.
+' ----------------------------------------------------------------------------
+Private mKeys()  As String
+Private mVals()  As Variant
+Private mCount   As Long
+Private mItems   As Collection
+Private mSaved   As Boolean
+
+Private Enum eValType
+    vtNumber = 1
+    vtDate = 2
+    vtText = 3
+    vtYesNo = 4
+End Enum
+
+' ============================================================================
+'  Setup
+' ============================================================================
+
+Private Sub UserForm_Initialize()
+    BuildLayout
+    LoadSettings
+    LoadItems
+    RefreshSettingList
+    RefreshItemList
+    ShowSelectedSetting
+End Sub
+
+Private Function Title() As String
+    Title = modAbout.ADDIN_NAME & " Settings"
+End Function
+
+Private Sub BuildLayout()
+    Me.Caption = Title()
+    Me.Width = 486
+    Me.Height = 412
+
+    Set mpgSettings = Me.Controls.Add("Forms.MultiPage.1", "mpgSettings", True)
+    With mpgSettings
+        .Left = 6: .Top = 6: .Width = 468: .Height = 336
+        .Pages(0).Caption = "Settings"
+        .Pages(1).Caption = "List"
+    End With
+
+    BuildSettingsPage mpgSettings.Pages(0)
+    BuildListPage mpgSettings.Pages(1)
+
+    Set cmdSave = Me.Controls.Add("Forms.CommandButton.1", "cmdSave", True)
+    With cmdSave
+        .Caption = "Save": .Left = 296: .Top = 350: .Width = 84: .Height = 24
+        ' Deliberately NOT .Default: with a default button, pressing Enter
+        ' after typing one value would save and close the whole form.
+    End With
+
+    Set cmdCancel = Me.Controls.Add("Forms.CommandButton.1", "cmdCancel", True)
+    With cmdCancel
+        .Caption = "Cancel": .Left = 386: .Top = 350: .Width = 84: .Height = 24
+        .Cancel = True                     ' Esc closes the form
+    End With
+End Sub
+
+Private Sub BuildSettingsPage(ByVal pg As Object)
+    Dim c As Object
+
+    Set c = pg.Controls.Add("Forms.Label.1", "lblListHdr", True)
+    With c
+        .Caption = "Click a setting to edit its value:"
+        .Left = 8: .Top = 6: .Width = 400: .Height = 12
+    End With
+
+    Set lstSettings = pg.Controls.Add("Forms.ListBox.1", "lstSettings", True)
+    With lstSettings
+        .Left = 8: .Top = 20: .Width = 440: .Height = 168
+        .ColumnCount = 2
+        .ColumnWidths = "190 pt;244 pt"
+    End With
+
+    Set lblKeyName = pg.Controls.Add("Forms.Label.1", "lblKeyName", True)
+    With lblKeyName
+        .Left = 8: .Top = 194: .Width = 440: .Height = 12
+        .Font.Bold = True
+    End With
+
+    Set txtValue = pg.Controls.Add("Forms.TextBox.1", "txtValue", True)
+    With txtValue
+        .Left = 8: .Top = 210: .Width = 346: .Height = 34
+        .MultiLine = True
+        .EnterKeyBehavior = False
+    End With
+
+    Set cmdUpdate = pg.Controls.Add("Forms.CommandButton.1", "cmdUpdate", True)
+    With cmdUpdate
+        .Caption = "Update": .Left = 360: .Top = 210: .Width = 88: .Height = 24
+    End With
+
+    Set lblHint = pg.Controls.Add("Forms.Label.1", "lblHint", True)
+    With lblHint
+        .Left = 8: .Top = 250: .Width = 440: .Height = 52
+    End With
+End Sub
+
+Private Sub BuildListPage(ByVal pg As Object)
+    Dim c As Object
+
+    Set c = pg.Controls.Add("Forms.Label.1", "lblItemsHdr", True)
+    With c
+        .Caption = "Items, in the order the Insert button cycles through them:"
+        .Left = 8: .Top = 6: .Width = 400: .Height = 12
+    End With
+
+    Set lstItems = pg.Controls.Add("Forms.ListBox.1", "lstItems", True)
+    With lstItems
+        .Left = 8: .Top = 20: .Width = 306: .Height = 216
+    End With
+
+    Set txtItem = pg.Controls.Add("Forms.TextBox.1", "txtItem", True)
+    With txtItem
+        .Left = 8: .Top = 244: .Width = 306: .Height = 18
+    End With
+
+    Set c = pg.Controls.Add("Forms.Label.1", "lblItemsTip", True)
+    With c
+        .Caption = "Type an item above, then Add. Select a row to Rename, Remove or move it."
+        .Left = 8: .Top = 266: .Width = 440: .Height = 30
+    End With
+
+    Set cmdAdd = AddButton(pg, "cmdAdd", "Add", 20)
+    Set cmdRename = AddButton(pg, "cmdRename", "Rename", 48)
+    Set cmdRemove = AddButton(pg, "cmdRemove", "Remove", 76)
+    Set cmdUp = AddButton(pg, "cmdUp", "Move Up", 112)
+    Set cmdDown = AddButton(pg, "cmdDown", "Move Down", 140)
+End Sub
+
+Private Function AddButton(ByVal pg As Object, ByVal nm As String, _
+                           ByVal cap As String, ByVal topPos As Single) As MSForms.CommandButton
+    Dim b As MSForms.CommandButton
+    Set b = pg.Controls.Add("Forms.CommandButton.1", nm, True)
+    With b
+        .Caption = cap: .Left = 324: .Top = topPos: .Width = 124: .Height = 24
+    End With
+    Set AddButton = b
+End Function
+
+' ============================================================================
+'  Per-setting metadata
+'
+'  Kept here so tblSettings stays two plain columns. When you add a setting,
+'  add it to both Select Case blocks -- an unlisted key still works, it is
+'  just treated as text with no hint.
+' ============================================================================
+
+Private Function KeyType(ByVal key As String) As eValType
+    Select Case UCase$(Trim$(key))
+        Case "PERIOD_END":          KeyType = vtDate
+        Case "DEFAULT_ROW_HEIGHT":  KeyType = vtNumber
+        Case "SHOW_TIPS":           KeyType = vtYesNo
+        Case Else:                  KeyType = vtText
+    End Select
+End Function
+
+Private Function KeyHint(ByVal key As String) As String
+    Select Case UCase$(Trim$(key))
+        Case "REPORT_TITLE"
+            KeyHint = "Title printed at the top of generated reports."
+        Case "PERIOD_END"
+            KeyHint = "Last day of the reporting period, for example 12/31/2026."
+        Case "DEFAULT_ROW_HEIGHT"
+            KeyHint = "Row height, in points, applied by the formatting buttons."
+        Case "SHOW_TIPS"
+            KeyHint = "Yes or No. Also switchable from the ribbon toggle."
+        Case Else
+            KeyHint = "(No description for this setting.)"
+    End Select
+End Function
+
+Private Function TypeLabel(ByVal t As eValType) As String
+    Select Case t
+        Case vtDate:   TypeLabel = "date"
+        Case vtNumber: TypeLabel = "number"
+        Case vtYesNo:  TypeLabel = "yes / no"
+        Case Else:     TypeLabel = "text"
+    End Select
+End Function
+
+Private Function DisplayValue(ByVal key As String, ByVal v As Variant) As String
+    If IsEmpty(v) Then Exit Function
+    Select Case KeyType(key)
+        Case vtDate
+            If IsDate(v) Then DisplayValue = Format$(CDate(v), "m/d/yyyy") Else DisplayValue = CStr(v)
+        Case vtYesNo
+            If VarType(v) = vbBoolean Then
+                DisplayValue = IIf(v, "Yes", "No")
+            Else
+                DisplayValue = CStr(v)
+            End If
+        Case Else
+            DisplayValue = CStr(v)
+    End Select
+End Function
+
+' ============================================================================
+'  Load / refresh
+' ============================================================================
+
+Private Sub LoadSettings()
+    Dim keys As Variant
+    keys = AddInStorage.SettingKeys()
+
+    mCount = 0
+    ReDim mKeys(0 To 0)
+    ReDim mVals(0 To 0)
+    If Not AddInStorage.HasItems(keys) Then Exit Sub
+
+    mCount = UBound(keys) - LBound(keys) + 1
+    ReDim mKeys(1 To mCount)
+    ReDim mVals(1 To mCount)
+
+    Dim i As Long, src As Long
+    src = LBound(keys)
+    For i = 1 To mCount
+        mKeys(i) = Trim$(CStr(keys(src)))
+        mVals(i) = AddInStorage.SettingValue(mKeys(i))
+        src = src + 1
+    Next i
+End Sub
+
+Private Sub LoadItems()
+    Set mItems = New Collection
+    Dim items As Variant, i As Long
+    items = AddInStorage.ItemList()
+    If Not AddInStorage.HasItems(items) Then Exit Sub
+    For i = LBound(items) To UBound(items)
+        mItems.Add CStr(items(i))
+    Next i
+End Sub
+
+Private Sub RefreshSettingList()
+    Dim keep As Long, i As Long
+    keep = lstSettings.ListIndex
+    lstSettings.Clear
+    For i = 1 To mCount
+        lstSettings.AddItem mKeys(i)
+        lstSettings.List(lstSettings.ListCount - 1, 1) = DisplayValue(mKeys(i), mVals(i))
+    Next i
+    If keep >= 0 And keep < lstSettings.ListCount Then
+        lstSettings.ListIndex = keep
+    ElseIf lstSettings.ListCount > 0 Then
+        lstSettings.ListIndex = 0
+    End If
+End Sub
+
+Private Sub RefreshItemList()
+    Dim keep As Long, i As Long
+    keep = lstItems.ListIndex
+    lstItems.Clear
+    For i = 1 To mItems.Count
+        lstItems.AddItem mItems(i)
+    Next i
+    If keep >= 0 And keep < lstItems.ListCount Then
+        lstItems.ListIndex = keep
+    ElseIf lstItems.ListCount > 0 Then
+        lstItems.ListIndex = 0
+    End If
+End Sub
+
+Private Sub ShowSelectedSetting()
+    Dim i As Long
+    i = lstSettings.ListIndex + 1                  ' ListIndex is 0-based
+    If i < 1 Or i > mCount Then
+        lblKeyName.Caption = ""
+        lblHint.Caption = ""
+        txtValue.Text = ""
+        txtValue.Enabled = False
+        cmdUpdate.Enabled = False
+        Exit Sub
+    End If
+    txtValue.Enabled = True
+    cmdUpdate.Enabled = True
+    lblKeyName.Caption = mKeys(i) & "   (" & TypeLabel(KeyType(mKeys(i))) & ")"
+    lblHint.Caption = KeyHint(mKeys(i))
+    txtValue.Text = DisplayValue(mKeys(i), mVals(i))
+End Sub
+
+' ============================================================================
+'  Settings page events
+' ============================================================================
+
+Private Sub lstSettings_Click()
+    ShowSelectedSetting
+End Sub
+
+Private Sub cmdUpdate_Click()
+    Dim i As Long
+    i = lstSettings.ListIndex + 1
+    If i < 1 Or i > mCount Then Exit Sub
+
+    Dim raw As String
+    raw = Trim$(txtValue.Text)
+
+    ' Validate BEFORE accepting. Catching a bad entry here is the reason the
+    ' form exists -- the same typo typed onto the sheet would silently fall
+    ' back to the built-in default.
+    Select Case KeyType(mKeys(i))
+        Case vtDate
+            If Not IsDate(raw) Then
+                Reject mKeys(i) & " must be a date, for example 12/31/2026.", raw
+                Exit Sub
+            End If
+            mVals(i) = CDate(raw)
+        Case vtNumber
+            If Len(raw) = 0 Or Not IsNumeric(raw) Then
+                Reject mKeys(i) & " must be a number.", raw
+                Exit Sub
+            End If
+            mVals(i) = CDbl(raw)
+        Case vtYesNo
+            Select Case UCase$(raw)
+                Case "YES", "Y", "TRUE", "1":  mVals(i) = True
+                Case "NO", "N", "FALSE", "0":  mVals(i) = False
+                Case Else
+                    Reject mKeys(i) & " must be Yes or No.", raw
+                    Exit Sub
+            End Select
+        Case Else
+            mVals(i) = raw
+    End Select
+
+    RefreshSettingList
+    ShowSelectedSetting
+End Sub
+
+Private Sub Reject(ByVal rule As String, ByVal raw As String)
+    MsgBox rule & vbCrLf & vbCrLf & "'" & raw & "' was not accepted.", vbExclamation, Title()
+    txtValue.SetFocus
+End Sub
+
+' ============================================================================
+'  List page events
+' ============================================================================
+
+Private Sub cmdAdd_Click()
+    Dim s As String
+    s = Trim$(txtItem.Text)
+    If Len(s) = 0 Then
+        MsgBox "Type an item in the box first.", vbInformation, Title()
+        Exit Sub
+    End If
+    If ItemExists(s) Then
+        MsgBox "'" & s & "' is already in the list.", vbInformation, Title()
+        Exit Sub
+    End If
+    mItems.Add s
+    txtItem.Text = ""
+    RefreshItemList
+    lstItems.ListIndex = lstItems.ListCount - 1
+End Sub
+
+Private Sub cmdRename_Click()
+    Dim i As Long
+    i = lstItems.ListIndex + 1
+    If i < 1 Then Exit Sub
+
+    Dim s As String
+    s = Trim$(InputBox("New name:", Title(), mItems(i)))
+    If Len(s) = 0 Then Exit Sub                     ' cancelled or cleared
+    If StrComp(s, mItems(i), vbTextCompare) <> 0 And ItemExists(s) Then
+        MsgBox "'" & s & "' is already in the list.", vbInformation, Title()
+        Exit Sub
+    End If
+    ReplaceItem i, s
+    RefreshItemList
+    lstItems.ListIndex = i - 1
+End Sub
+
+Private Sub cmdRemove_Click()
+    Dim i As Long
+    i = lstItems.ListIndex + 1
+    If i < 1 Then Exit Sub
+    If MsgBox("Remove '" & mItems(i) & "'?", vbQuestion + vbYesNo, Title()) = vbNo Then Exit Sub
+    mItems.Remove i
+    RefreshItemList
+    If lstItems.ListCount > 0 Then
+        lstItems.ListIndex = IIf(i - 1 < lstItems.ListCount, i - 1, lstItems.ListCount - 1)
+    End If
+End Sub
+
+Private Sub cmdUp_Click()
+    MoveItem -1
+End Sub
+
+Private Sub cmdDown_Click()
+    MoveItem 1
+End Sub
+
+Private Sub MoveItem(ByVal delta As Long)
+    Dim i As Long, j As Long, s As String
+    i = lstItems.ListIndex + 1
+    If i < 1 Then Exit Sub
+    j = i + delta
+    If j < 1 Or j > mItems.Count Then Exit Sub
+    s = mItems(i)
+    mItems.Remove i
+    If j > mItems.Count Then mItems.Add s Else mItems.Add s, , j
+    RefreshItemList
+    lstItems.ListIndex = j - 1
+End Sub
+
+' A Collection has no "replace": remove, then insert at the same position.
+Private Sub ReplaceItem(ByVal pos As Long, ByVal newText As String)
+    mItems.Remove pos
+    If pos > mItems.Count Then mItems.Add newText Else mItems.Add newText, , pos
+End Sub
+
+Private Function ItemExists(ByVal s As String) As Boolean
+    Dim i As Long
+    For i = 1 To mItems.Count
+        If StrComp(mItems(i), s, vbTextCompare) = 0 Then
+            ItemExists = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+' ============================================================================
+'  Save / Cancel
+' ============================================================================
+
+Private Sub cmdSave_Click()
+    On Error GoTo Failed
+
+    If Not AddInStorage.StorageReady() Then
+        MsgBox "The add-in's storage sheet could not be found, so settings " & _
+               "cannot be saved.", vbExclamation, Title()
+        Exit Sub
+    End If
+
+    Dim skipped As String, i As Long
+    For i = 1 To mCount
+        If Not AddInStorage.SetSetting(mKeys(i), mVals(i)) Then
+            skipped = skipped & vbCrLf & "   " & mKeys(i) & "  -  " & AddInStorage.LastError
+        End If
+    Next i
+
+    ' Collection -> 1-based array for the storage layer.
+    Dim items As Variant
+    If mItems.Count > 0 Then
+        ReDim items(1 To mItems.Count)
+        For i = 1 To mItems.Count
+            items(i) = mItems(i)
+        Next i
+    Else
+        items = Array()
+    End If
+
+    If Not AddInStorage.SetItemList(items) Then
+        MsgBox "The list could not be written." & vbCrLf & vbCrLf & _
+               AddInStorage.LastError, vbExclamation, Title()
+        Exit Sub
+    End If
+
+    ' Persist the add-in file itself. Without this the edits live only in
+    ' memory and Excel discards them at shutdown without ever prompting.
+    AddInStorage.SaveStorage
+    AddInStorage.InvalidateCache
+
+    If Len(skipped) > 0 Then
+        MsgBox "Saved, but these settings were skipped:" & vbCrLf & skipped, _
+               vbExclamation, Title()
+    End If
+
+    mSaved = True
+    Me.Hide                     ' Hide, not Unload -- see the Saved property
+    Exit Sub
+
+Failed:
+    MsgBox "Could not save settings." & vbCrLf & vbCrLf & _
+           "Error " & Err.Number & ": " & Err.Description, vbExclamation, Title()
+End Sub
+
+Private Sub cmdCancel_Click()
+    Me.Hide
+End Sub
+
+' The title-bar X would otherwise UNLOAD the form behind the caller's back.
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = vbFormControlMenu Then
+        Cancel = True
+        Me.Hide
+    End If
+End Sub
+
+' True if the user saved rather than cancelled.
+'
+' This is why the buttons call Me.Hide instead of Unload Me: unloading
+' destroys the form's variables, so the calling macro would have nothing left
+' to read. Hiding returns control to the caller with the object intact; the
+' caller unloads it when done.
+Public Property Get Saved() As Boolean
+    Saved = mSaved
+End Property

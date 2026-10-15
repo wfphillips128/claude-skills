@@ -1,0 +1,10 @@
+{
+  "name": "excel-dev",
+  "version": "1.0.0",
+  "description": "Build new Excel LAMBDAs to the 5G standard, refactor and write VBA, and build .xlam add-ins (ribbon XML, .bas modules, verification).",
+  "author": {
+    "name": "wfphillips128"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/wfphillips128/claude-skills"
+}

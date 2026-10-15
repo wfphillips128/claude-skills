@@ -1,0 +1,6 @@
+# Python packages used by the published skills.
+#   pip install -r requirements.txt
+oletools
+openpyxl
+pywin32
+requests

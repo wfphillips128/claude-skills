@@ -1,0 +1,73 @@
+' ============================================================================
+'  ThisWorkbook  --  paste into the add-in's ThisWorkbook module
+'
+'  WHERE THIS GOES
+'    In the VBA editor, under the add-in's project, expand "Microsoft Excel
+'    Objects" and double-click "ThisWorkbook". Paste all of this in (replace
+'    anything already there). It must be THIS module, not a standard one:
+'    WithEvents only works in a class module, and ThisWorkbook is one.
+'
+'  WHAT IT IS FOR
+'    Keeping ribbon controls whose state depends on the active workbook
+'    honest (here: btnInsertItem is disabled when no workbook is open).
+'
+'    A ribbon control does not refresh on its own. Excel serves whatever it
+'    cached the last time it asked, and only asks again when something calls
+'    IRibbonUI.Invalidate / InvalidateControl. Opening or switching
+'    workbooks does not do that. The wake-up signal has to come from Excel,
+'    and Application-level events are how an add-in listens for it.
+'
+'  WHY "WithEvents App As Application" AND NOT Workbook_Activate
+'    Workbook_Activate in here fires when THE ADD-IN is activated, which
+'    never happens -- an .xlam has no window. Application events fire for
+'    every workbook in the session, which is what an add-in needs.
+' ============================================================================
+
+Option Explicit
+
+Private WithEvents App As Application
+
+' Fires when Excel loads the add-in. Until App is assigned, none of the
+' handlers below are live -- this one line switches them on.
+Private Sub Workbook_Open()
+    Set App = Application
+End Sub
+
+' If the add-in is ticked on during a session that is already running,
+' Workbook_Open may already have gone by.
+Private Sub Workbook_AddinInstall()
+    Set App = Application
+End Sub
+
+Private Sub App_WorkbookActivate(ByVal Wb As Workbook)
+    SafeRefresh
+End Sub
+
+Private Sub App_WorkbookOpen(ByVal Wb As Workbook)
+    SafeRefresh
+End Sub
+
+Private Sub App_NewWorkbook(ByVal Wb As Workbook)
+    SafeRefresh
+End Sub
+
+' Closing the front workbook leaves a different one active, or none at all.
+Private Sub App_WorkbookBeforeClose(ByVal Wb As Workbook, Cancel As Boolean)
+    SafeRefresh
+End Sub
+
+' Switching windows does not always raise WorkbookActivate.
+Private Sub App_WindowActivate(ByVal Wb As Workbook, ByVal Wn As Window)
+    SafeRefresh
+End Sub
+
+' One place, wrapped in On Error Resume Next.
+'
+' An unhandled error inside an Application event handler can reset VBA state,
+' and resetting VBA state destroys the IRibbonUI object every dynamic control
+' depends on. A handler that fires on every workbook switch has to be
+' incapable of failing.
+Private Sub SafeRefresh()
+    On Error Resume Next
+    modRibbon.RefreshRibbon
+End Sub

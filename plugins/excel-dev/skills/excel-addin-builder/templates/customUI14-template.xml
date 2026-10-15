@@ -1,0 +1,73 @@
+<!-- customUI14 template. Every callback named here exists in templates/modRibbon.bas.
+
+     Paste the whole file into the Office RibbonX Editor as an "Office 2010+
+     Custom UI Part" (customUI14.xml), click Validate, then Save.
+
+     Rules that fail SILENTLY if broken:
+       * One bad attribute and the WHOLE tab disappears at load. No error
+         unless File > Options > Advanced > General > "Show add-in user
+         interface errors" is ticked. Tick it while developing.
+       * Every id must be unique in the file. Use idMso only for built-ins.
+       * A property and its get-callback are mutually exclusive: label OR
+         getLabel, imageMso OR image OR getImage, enabled OR getEnabled.
+       * An unknown imageMso is NOT an error: the icon is just blank.
+       * Two hyphens in a row are illegal inside an XML comment, so these
+         comments never use them.
+-->
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="Ribbon_OnLoad">
+  <ribbon>
+    <tabs>
+      <tab id="tabMyAddIn" label="My Add-in">
+
+        <group id="grpTools" label="Tools">
+          <!-- Dynamic label and enabled state: Excel calls the get callbacks at
+               load, then again only after RefreshRibbon invalidates them. -->
+          <button id="btnInsertItem" size="large" imageMso="TableInsert"
+                  getLabel="Ribbon_GetLabel" getEnabled="Ribbon_GetEnabled"
+                  onAction="Ribbon_InsertNextItem"
+                  screentip="Insert Next Item"
+                  supertip="Writes the next item from the add-in's list into the active cell. Edit the list under Settings." />
+
+          <separator id="sepTools1" />
+
+          <!-- toggleButton: onAction receives the new pressed state as a 2nd argument.
+               getImage returns an imageMso NAME, so the icon follows the state. -->
+          <toggleButton id="tglTips" label="Show Tips"
+                        getPressed="Ribbon_TipsPressed" getImage="Ribbon_TipsImage"
+                        onAction="Ribbon_TipsToggle"
+                        screentip="Show Tips" supertip="Turns the add-in's tips on or off. Saved with the add-in." />
+
+          <menu id="mnuMore" label="More" imageMso="AdvancedFileProperties">
+            <button id="btnReload" label="Reload Settings" imageMso="Refresh"
+                    onAction="Ribbon_ReloadSettings" />
+            <menuSeparator id="msepMore1" />
+            <button id="btnReset" label="Reset Excel State" imageMso="Undo"
+                    onAction="Ribbon_ResetExcelState"
+                    supertip="Use if a macro crashed and left the screen frozen or events switched off." />
+          </menu>
+        </group>
+
+        <group id="grpSettings" label="Settings">
+          <!-- splitButton: the top half runs its button, the arrow opens the menu. -->
+          <splitButton id="splSettings" size="large">
+            <button id="btnSettings" label="Settings" imageMso="ApplicationOptionsDialog"
+                    onAction="Ribbon_ShowSettings" />
+            <menu id="mnuSettings">
+              <button id="btnSettingsMenu" label="Edit Settings" imageMso="ApplicationOptionsDialog"
+                      onAction="Ribbon_ShowSettings" />
+              <button id="btnAbout" label="About" imageMso="Info"
+                      onAction="Ribbon_ShowAbout" />
+            </menu>
+          </splitButton>
+
+          <!-- A CUSTOM icon instead of imageMso (see reference/ribbon-xml.md):
+               <button id="btnMine" label="Mine" image="myIcon" onAction="Ribbon_Mine" />
+               "myIcon" must be embedded with the RibbonX Editor's Insert Icons,
+               which stores it under customUI/images and registers it in
+               customUI/_rels/customUI14.xml.rels. -->
+        </group>
+
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>

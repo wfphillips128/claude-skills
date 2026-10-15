@@ -1,0 +1,131 @@
+' ============================================================================
+'  frmAbout -- the About box
+' ============================================================================
+'
+'  HOW TO INSTALL THIS  (about 30 seconds, no dragging of controls)
+'
+'    1. In the VBA editor, select the add-in's project in the Project
+'       Explorer (left pane).
+'    2. Insert > UserForm.  A blank form appears.
+'    3. In the Properties window (F4), set:
+'           (Name)  =  frmAbout
+'    4. Double-click the blank form to open its code window, delete anything
+'       already in it, and paste EVERYTHING in this file.
+'
+'  Do NOT place any controls yourself -- the form builds its own layout when
+'  it opens. A UserForm exports as a .frm PLUS a binary .frx holding the
+'  layout, so a hand-written .frm alone would import as an empty form.
+'  Building the controls in code keeps the whole layout as readable text you
+'  can diff, back up and review.
+'
+'  WHERE THE TEXT COMES FROM
+'    Nothing user-visible is typed in this file. The name, version and
+'    licence all come from modAbout, so this form never needs touching when
+'    the version changes.
+' ============================================================================
+
+Option Explicit
+
+' Controls, created at run time in UserForm_Initialize. Only the button needs
+' WithEvents (see frmSettings for why); labels and the text box are never
+' clicked.
+Private lblTitle     As MSForms.Label
+Private lblVersion   As MSForms.Label
+Private txtLicense   As MSForms.TextBox
+
+Private WithEvents cmdClose As MSForms.CommandButton
+
+' Layout constants, so the panel and the button stay aligned if you move one.
+Private Const MARGIN_L   As Single = 14
+Private Const BODY_W     As Single = 408
+Private Const BTN_W      As Single = 84
+Private Const BTN_H      As Single = 24
+
+Private Sub UserForm_Initialize()
+    BuildLayout
+    FillText
+End Sub
+
+Private Sub BuildLayout()
+    Me.Caption = "About " & modAbout.ADDIN_NAME
+    Me.Width = 436
+    Me.Height = 386
+
+    Dim c As Object
+
+    Set lblTitle = Me.Controls.Add("Forms.Label.1", "lblTitle", True)
+    With lblTitle
+        .Left = MARGIN_L: .Top = 12: .Width = BODY_W: .Height = 22
+        .Font.Size = 14
+        .Font.Bold = True
+    End With
+
+    Set lblVersion = Me.Controls.Add("Forms.Label.1", "lblVersion", True)
+    With lblVersion
+        .Left = MARGIN_L: .Top = 36: .Width = BODY_W: .Height = 14
+    End With
+
+    ' A 1-point-tall filled label is the cheapest horizontal rule MSForms
+    ' offers -- there is no line control on a UserForm.
+    Set c = Me.Controls.Add("Forms.Label.1", "lblRule", True)
+    With c
+        .Caption = ""
+        .Left = MARGIN_L: .Top = 58: .Width = BODY_W: .Height = 1
+        .BackColor = &H80000010                ' system button-shadow grey
+    End With
+
+    Set c = Me.Controls.Add("Forms.Label.1", "lblLicHdr", True)
+    With c
+        .Caption = "License"
+        .Left = MARGIN_L: .Top = 68: .Width = BODY_W: .Height = 14
+        .Font.Bold = True
+    End With
+
+    Set txtLicense = Me.Controls.Add("Forms.TextBox.1", "txtLicense", True)
+    With txtLicense
+        .Left = MARGIN_L: .Top = 86: .Width = BODY_W: .Height = 224
+        .MultiLine = True
+        .ScrollBars = fmScrollBarsVertical
+        ' Locked, not Enabled = False. A locked box still lets the user select
+        ' and copy the text; a disabled one greys it out and blocks copying.
+        .Locked = True
+        .TabStop = False
+    End With
+
+    Set cmdClose = Me.Controls.Add("Forms.CommandButton.1", "cmdClose", True)
+    With cmdClose
+        .Caption = "Close"
+        .Left = MARGIN_L + BODY_W - BTN_W: .Top = 322: .Width = BTN_W: .Height = BTN_H
+        .Default = True                        ' Enter closes
+        .Cancel = True                         ' Esc closes
+    End With
+End Sub
+
+Private Sub FillText()
+    lblTitle.Caption = modAbout.ADDIN_NAME
+    lblVersion.Caption = modAbout.VersionString()
+    txtLicense.Text = modAbout.LicenseText()
+
+    ' Put the caret at the top. Assigning .Text leaves it at the end, so a
+    ' scrolling box would open on the LAST paragraph instead of the first.
+    ' Cosmetic, so never worth failing the form for.
+    On Error Resume Next
+    txtLicense.SelStart = 0
+    On Error GoTo 0
+End Sub
+
+' Hide, not Unload: LaunchAbout still holds a reference and unloads the form
+' itself. Unloading here as well would make that second Unload re-create the
+' form just to destroy it.
+Private Sub cmdClose_Click()
+    Me.Hide
+End Sub
+
+' The title-bar X would otherwise UNLOAD the form behind the caller's back.
+' Turn it into the same Hide the Close button does.
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = vbFormControlMenu Then
+        Cancel = True
+        Me.Hide
+    End If
+End Sub
