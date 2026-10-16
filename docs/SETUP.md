@@ -35,10 +35,14 @@ model*. Only the scripted checks need it; everything else works without.
 ## 2. Install the skills
 
 ```
-claude plugin marketplace add wfphillips128/claude-skills
+claude plugin marketplace add https://github.com/wfphillips128/claude-skills.git
 claude plugin install excel-dev@wfphillips128-skills
 claude plugin install claude-workflow@wfphillips128-skills    # optional
 ```
+
+Use the full `https://…git` address, not the `owner/repo` shorthand: the
+shorthand clones over SSH and fails ("Host key verification failed") on any
+machine without GitHub SSH keys set up.
 
 Restart Claude Code (or run `/reload-plugins`). Check with `/plugin` — both
 plugins should be listed and enabled.
@@ -67,7 +71,7 @@ writing your own skills — come from Anthropic. Install them from the source
 rather than from a copy:
 
 ```
-claude plugin marketplace add anthropics/skills
+claude plugin marketplace add https://github.com/anthropics/skills.git
 claude plugin install document-skills@anthropic-agent-skills
 ```
 

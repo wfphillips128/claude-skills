@@ -4,6 +4,11 @@ One entry per publish. Newest first. Generated from the diff.
 
 ## 2026-10-15
 
+- Changed: README.md (1 file)
+- Changed: docs (1 file)
+
+## 2026-10-15
+
 - Added: .claude-plugin (1 file)
 - Added: claude-workflow (manifest) (1 file)
 - Added: claude-workflow / copyconvo (2 files)

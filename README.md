@@ -13,7 +13,7 @@ LAMBDA library -- see [Finished LAMBDA libraries](#finished-lambda-libraries).
 This repo is a Claude Code **plugin marketplace**. In a terminal:
 
 ```
-claude plugin marketplace add wfphillips128/claude-skills
+claude plugin marketplace add https://github.com/wfphillips128/claude-skills.git
 claude plugin install excel-dev@wfphillips128-skills
 claude plugin install claude-workflow@wfphillips128-skills      # optional
 ```
