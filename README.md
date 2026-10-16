@@ -31,6 +31,10 @@ same name first. Re-run it after `git pull` to update.
 **Full setup** -- prerequisites, Python packages, Anthropic's document skills,
 MCP servers, a starter `CLAUDE.md`, and prompts to try: [docs/SETUP.md](docs/SETUP.md).
 
+**Worked example** -- [Roll Your Own LAMBDA](docs/roll-your-own-lambda/): how to
+describe a LAMBDA so Claude Code builds and tests it, with the workbook to
+follow along in and the finished answer.
+
 ## Plugins
 
 ### `excel-dev`

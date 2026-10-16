@@ -44,6 +44,10 @@ behaviour can't be fully predicted from the text. Lessons in the skills'
 `pitfalls` reference come from exactly that: functions that looked right and
 weren't. A run is cheaper than an argument.
 
+**See it done end to end:** [Roll Your Own LAMBDA](roll-your-own-lambda/) is a
+worked example. It covers the description, the prompt, the test results, and a
+workbook to follow along in.
+
 ## Extending a function you already have
 
 Point `compose-5g-lambda` at the existing function (paste it, or let it read

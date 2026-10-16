@@ -4,6 +4,12 @@ One entry per publish. Newest first. Generated from the diff.
 
 ## 2026-10-15
 
+- Added: docs (4 files)
+- Changed: README.md (1 file)
+- Changed: docs (1 file)
+
+## 2026-10-15
+
 - Changed: README.md (1 file)
 - Changed: docs (1 file)
 
